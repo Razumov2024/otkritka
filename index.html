@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Дорогой Папа!</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400;1,600&family=Montserrat:wght@300;400&display=swap" rel="stylesheet">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+        :root {
+            --bg-color: #0a0a0a;
+            --text-main: #f3f4f6;
+            --gold-light: #fcf6ba;
+            --gold-mid: #d4af37;
+            --gold-dark: #aa771c;
+        }
+
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100dvh;
+            background-color: var(--bg-color);
+            background-image: radial-gradient(circle at 50% 50%, #1a1a1a 0%, #050505 100%);
+            color: var(--text-main);
+            font-family: 'Montserrat', sans-serif;
+            overflow: hidden;
+            touch-action: pan-x; /* Разрешаем только свайп вбок */
+        }
+
+        .gold-text {
+            background: linear-gradient(to right, #bf953f, #fcf6ba, #b38728, #fbf5b7, #aa771c);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            color: transparent;
+            text-shadow: 0px 4px 15px rgba(212, 175, 55, 0.2);
+        }
+
+        .serif-font {
+            font-family: 'Cormorant Garamond', serif;
+        }
+
+        .slider-container {
+            display: flex;
+            width: 100vw;
+            height: 100dvh;
+            overflow-x: auto;
+            overflow-y: hidden;
+            scroll-snap-type: x mandatory;
+            scroll-behavior: smooth;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+            overscroll-behavior-x: contain;
+            position: relative;
+            z-index: 10;
+        }
+        
+        .slider-container::-webkit-scrollbar {
+            display: none;
+        }
+
+        .slide {
+            flex: 0 0 100vw;
+            height: 100dvh;
+            scroll-snap-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            position: relative;
+        }
+
+        #bg-canvas, #fireworks-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        #bg-canvas { z-index: 1; }
+        #fireworks-canvas { z-index: 20; opacity: 0; transition: opacity 1s ease-in; }
+        #fireworks-canvas.active { opacity: 1; }
+
+        .fade-up {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: opacity 1.2s ease-out, transform 1.2s ease-out;
+        }
+        .fade-up.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .zoom-in {
+            opacity: 0;
+            transform: scale(0.9);
+            transition: all 1.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+        .zoom-in.visible {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        .delay-1 { transition-delay: 0.3s; }
+        .delay-2 { transition-delay: 0.6s; }
+        .delay-3 { transition-delay: 0.9s; }
+
+        @keyframes pulse-swipe {
+            0%, 100% { opacity: 0.4; transform: translateX(0); }
+            50% { opacity: 1; transform: translateX(-10px); }
+        }
+
+        .swipe-indicator {
+            position: absolute;
+            bottom: 8%;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.8rem;
+            color: rgba(255, 255, 255, 0.6);
+            animation: pulse-swipe 2s infinite ease-in-out;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        .decorative-line {
+            width: 60px;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--gold-mid), transparent);
+            margin: 1.5rem auto;
+        }
+
+        .photo-frame {
+            padding: 4px;
+            background: linear-gradient(45deg, var(--gold-dark), var(--gold-light), var(--gold-dark));
+            border-radius: 12px;
+            box-shadow: 0 0 35px rgba(212, 175, 55, 0.25);
+            display: inline-block;
+            background-size: 200% 200%;
+            animation: gradient-shift 5s ease infinite;
+        }
+
+        @keyframes gradient-shift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .photo-image {
+            display: block;
+            width: 100%;
+            max-width: 80vw;
+            max-height: 55vh;
+            border-radius: 8px;
+            object-fit: cover;
+            border: 2px solid #111;
+        }
+
+        /* Искры при касании */
+        .tap-spark {
+            position: absolute;
+            width: 5px;
+            height: 5px;
+            background: var(--gold-light);
+            border-radius: 50%;
+            pointer-events: none;
+            animation: spark-burst 0.7s cubic-bezier(0.1, 0.8, 0.3, 1) forwards;
+            z-index: 9999;
+            box-shadow: 0 0 8px var(--gold-mid);
+        }
+
+        @keyframes spark-burst {
+            0% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+            100% { transform: translate(calc(-50% + var(--tx)), calc(-50% + var(--ty))) scale(0); opacity: 0; }
+        }
+
+        /* --- НОВЫЕ СТИЛИ ДЛЯ КНОПКИ УДЕРЖАНИЯ --- */
+        .hold-button {
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            -webkit-touch-callout: none; /* Запрет всплывающего меню на iOS */
+        }
+        .hold-button.holding {
+            transform: scale(0.92);
+            box-shadow: 0 0 45px rgba(212, 175, 55, 0.8);
+        }
+        .progress-ring__circle {
+            transition: stroke-dashoffset 0.05s linear;
+            transform: rotate(-90deg);
+            transform-origin: 50% 50%;
+        }
+        .reveal-glow {
+            text-shadow: 0 0 25px rgba(212, 175, 55, 0.5), 0 0 45px rgba(212, 175, 55, 0.3);
+            animation: textReveal 1.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+        }
+        @keyframes textReveal {
+            0% { opacity: 0; transform: scale(0.8) translateY(20px); filter: blur(5px); }
+            100% { opacity: 1; transform: scale(1) translateY(0); filter: blur(0); }
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="bg-canvas"></canvas>
+    <canvas id="fireworks-canvas"></canvas>
+
+    <div class="slider-container" id="slider">
+        
+        <!-- Слайд 1: Обложка -->
+        <section class="slide" id="slide-1">
+            <div class="text-center z-10 w-full px-4">
+                <div class="text-gold-light text-sm sm:text-base mb-6 tracking-[0.3em] fade-up visible">✦ ✦ ✦</div>
+                <h1 class="serif-font text-5xl sm:text-6xl md:text-7xl font-semibold gold-text mb-4 fade-up visible delay-1 leading-tight">
+                    Дорогой<br>Папа
+                </h1>
+                <div class="decorative-line fade-up visible delay-2"></div>
+            </div>
+            
+            <div class="swipe-indicator fade-up visible delay-3" id="swipe-hint">
+                <span>&#10092;</span> Смахни влево
+            </div>
+        </section>
+
+        <section class="slide" id="slide-2">
+            <div class="text-center max-w-md w-full z-10 px-6 py-10 bg-[#ffffff03] rounded-3xl backdrop-blur-md border border-[#ffffff0a] shadow-2xl relative">
+                <!-- Декоративные кавычки -->
+                <div class="absolute -top-6 left-1/2 -translate-x-1/2 gold-text text-6xl serif-font opacity-50">"</div>
+                
+                <p class="serif-font text-2xl sm:text-3xl leading-relaxed text-gray-200 fade-up" data-observe>
+                    Спасибо тебе за поддержку, мудрость и безграничную любовь.
+                </p>
+                <div class="decorative-line mt-8 fade-up delay-1" data-observe></div>
+            </div>
+        </section>
+
+        <!-- Слайд 3: Интерактив "Удерживай палец" -->
+        <section class="slide" id="slide-3">
+            <div class="flex flex-col items-center justify-center z-10 w-full px-4 h-full relative">
+                
+                <!-- Состояние 1: Кнопка "Удерживай" -->
+                <div id="hold-ui" class="flex flex-col items-center fade-up delay-1" data-observe>
+                    <div class="relative flex items-center justify-center">
+                        <!-- SVG Кольцо прогресса -->
+                        <svg width="150" height="150" class="absolute pointer-events-none">
+                            <circle class="progress-ring__circle" stroke="var(--gold-mid)" stroke-width="3" fill="transparent" r="70" cx="75" cy="75" stroke-linecap="round" />
+                        </svg>
+                        <!-- Сама кнопка -->
+                        <button id="hold-btn" class="hold-button touch-none w-[120px] h-[120px] rounded-full bg-gradient-to-tr from-[#8a5a19] via-[#d4af37] to-[#fcf6ba] shadow-[0_0_20px_rgba(212,175,55,0.3)] flex items-center justify-center cursor-pointer select-none relative z-10">
+                            <!-- Иконка отпечатка / нажатия -->
+                            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#1a1a1a" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M12 10a2 2 0 0 0-2 2c0 1.02-.1 2.51-.26 4"/><path d="M14 13.12c0 2.38 0 6.38-1 8.88"/><path d="M17.29 21.02c.12-.6.43-2.3.5-3.02"/><path d="M2 12a10 10 0 0 1 18-6"/><path d="M2 16h.01"/><path d="M21.8 16c.2-2 .131-5.354 0-6"/><path d="M5 19.5C5.5 18 6 15 6 12a6 6 0 0 1 .34-2"/><path d="M8.65 22c.21-.66.45-1.32.57-2"/><path d="M9 6.8a6 6 0 0 1 9 5.6c0 .47.1 2.51.26 4"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <p class="text-gold-light mt-8 tracking-[0.2em] text-xs sm:text-sm uppercase opacity-80 animate-pulse text-center">
+                        Приложи и удерживай палец
+                    </p>
+                </div>
+
+                <!-- Состояние 2: Скрытый текст -->
+                <div id="revealed-content" class="hidden absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full px-6 flex-col items-center justify-center">
+                    <div class="text-3xl sm:text-4xl md:text-5xl serif-font font-bold leading-relaxed text-center gold-text text-reveal-text">
+                        Ты — мой главный<br>пример в жизни!
+                        Я тебя очень сильно люблю<br> и ценю!
+                    </div>
+                    <div class="decorative-line mt-6 w-[80px]"></div>
+                </div>
+
+            </div>
+        </section>
+
+        <section class="slide" id="slide-4">
+            <div class="text-center z-10 relative px-4">
+                <div class="text-gold-mid text-2xl mb-4 fade-up" data-observe>✦</div>
+                <h1 class="serif-font text-5xl sm:text-6xl md:text-7xl font-bold gold-text mb-4 fade-up delay-1" data-observe>
+                    С днем рождения!
+                </h1>
+                <p class="text-gray-400 mt-6 tracking-[0.2em] text-xs sm:text-sm uppercase fade-up delay-2" data-observe>
+                    Желаю счастья и здоровья
+                </p>
+            </div>
+        </section>
+
+    </div>
+
+    <script>
+        const observerOptions = {
+            root: document.querySelector('#slider'),
+            rootMargin: '0px',
+            threshold: 0.4 
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                }
+            });
+        }, observerOptions);
+
+        document.querySelectorAll('[data-observe]').forEach(el => {
+            observer.observe(el);
+        });
+
+        // Скрытие подсказки "Смахни влево"
+        const slider = document.getElementById('slider');
+        const swipeHint = document.getElementById('swipe-hint');
+        
+        slider.addEventListener('scroll', () => {
+            if (slider.scrollLeft > 30) {
+                swipeHint.style.opacity = '0';
+                swipeHint.style.transition = 'opacity 0.5s ease';
+            }
+        });
+
+        function createTapBurst(x, y) {
+            const numSparks = 8 + Math.floor(Math.random() * 6); // 8-13 искр
+            for(let i = 0; i < numSparks; i++) {
+                const spark = document.createElement('div');
+                spark.className = 'tap-spark';
+                spark.style.left = x + 'px';
+                spark.style.top = y + 'px';
+                
+                // Случайный угол и дистанция разлета
+                const angle = Math.random() * Math.PI * 2;
+                const distance = Math.random() * 50 + 20; 
+                
+                spark.style.setProperty('--tx', Math.cos(angle) * distance + 'px');
+                spark.style.setProperty('--ty', Math.sin(angle) * distance + 'px');
+                
+                document.body.appendChild(spark);
+                
+                // Удаляем элемент после завершения анимации
+                setTimeout(() => spark.remove(), 700);
+            }
+        }
+
+        // Обработка клика мыши
+        document.addEventListener('click', (e) => {
+            createTapBurst(e.clientX, e.clientY);
+        });
+
+        // Обработка касания на мобильных устройствах
+        document.addEventListener('touchstart', (e) => {
+            if (e.touches.length > 0) {
+                // Берем координаты первого пальца
+                createTapBurst(e.touches[0].clientX, e.touches[0].clientY);
+            }
+        }, { passive: true });
+
+        // --- ЛОГИКА КНОПКИ УДЕРЖАНИЯ (Слайд 3) ---
+        const holdBtn = document.getElementById('hold-btn');
+        const progressCircle = document.querySelector('.progress-ring__circle');
+        const holdUi = document.getElementById('hold-ui');
+        const revealedContent = document.getElementById('revealed-content');
+        
+        let holdTimer;
+        let progressInterval;
+        let currentProgress = 0; 
+        const holdDuration = 1500; // 1.5 секунды удержания
+        const circleRadius = 70;
+        const circumference = 2 * Math.PI * circleRadius; 
+        
+        // Настройка кольца прогресса
+        progressCircle.style.strokeDasharray = `${circumference} ${circumference}`;
+        progressCircle.style.strokeDashoffset = circumference;
+        
+        function setProgress(percent) {
+            const offset = circumference - (percent / 100) * circumference;
+            progressCircle.style.strokeDashoffset = offset;
+        }
+        
+        function startHold(e) {
+            if (e.cancelable) e.preventDefault(); // Отключаем стандартные мобильные меню/скролл
+            
+            holdBtn.classList.add('holding');
+            const step = 100 / (holdDuration / 20); // Шаг каждые 20 мс
+            
+            progressInterval = setInterval(() => {
+                currentProgress += step;
+                setProgress(Math.min(currentProgress, 100));
+                
+                // Эффект магии: разлетающиеся искры пока палец на экране
+                if (Math.random() < 0.25) {
+                    const rect = holdBtn.getBoundingClientRect();
+                    createTapBurst(
+                        rect.left + rect.width/2 + (Math.random() - 0.5) * 60, 
+                        rect.top + rect.height/2 + (Math.random() - 0.5) * 60
+                    );
+                }
+                
+                if (currentProgress >= 100) {
+                    completeHold();
+                }
+            }, 20);
+        }
+        
+        function stopHold() {
+            clearInterval(progressInterval);
+            holdBtn.classList.remove('holding');
+            currentProgress = 0;
+            setProgress(0);
+        }
+        
+        function completeHold() {
+            stopHold();
+            
+            // Прячем интерфейс с кнопкой
+            holdUi.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
+            holdUi.style.opacity = '0';
+            holdUi.style.transform = 'scale(0.8)';
+            
+            setTimeout(() => {
+                holdUi.style.display = 'none';
+                
+                // Показываем заветный текст с эффектом свечения
+                revealedContent.classList.remove('hidden');
+                revealedContent.classList.add('flex');
+                revealedContent.querySelector('.text-reveal-text').classList.add('reveal-glow');
+                
+                // Взрыв искр в честь открытия!
+                const rect = holdBtn.getBoundingClientRect();
+                for(let i = 0; i < 7; i++) {
+                    setTimeout(() => {
+                        createTapBurst(rect.left + rect.width/2, rect.top + rect.height/2);
+                    }, i * 80);
+                }
+            }, 400);
+        }
+        
+        // События мыши (для тестов с компьютера)
+        holdBtn.addEventListener('mousedown', startHold);
+        document.addEventListener('mouseup', stopHold);
+        holdBtn.addEventListener('mouseleave', stopHold);
+        
+        // События касания (для мобильных)
+        holdBtn.addEventListener('touchstart', startHold, {passive: false});
+        document.addEventListener('touchend', stopHold);
+        document.addEventListener('touchcancel', stopHold);
+
+
+        const bgCanvas = document.getElementById('bg-canvas');
+        const bgCtx = bgCanvas.getContext('2d');
+        let particles = [];
+
+        function resizeBg() {
+            bgCanvas.width = window.innerWidth;
+            bgCanvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeBg);
+        resizeBg();
+
+        class BgParticle {
+            constructor() {
+                this.x = Math.random() * bgCanvas.width;
+                this.y = Math.random() * bgCanvas.height;
+                this.size = Math.random() * 1.5 + 0.5;
+                this.speedY = Math.random() * 0.4 + 0.1;
+                this.speedX = (Math.random() - 0.5) * 0.2;
+                this.opacity = Math.random() * 0.6 + 0.1;
+            }
+            update() {
+                this.y -= this.speedY;
+                this.x += this.speedX;
+                if (this.y < -10) {
+                    this.y = bgCanvas.height + 10;
+                    this.x = Math.random() * bgCanvas.width;
+                }
+            }
+            draw() {
+                bgCtx.fillStyle = `rgba(212, 175, 55, ${this.opacity})`;
+                bgCtx.beginPath();
+                bgCtx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                bgCtx.fill();
+            }
+        }
+
+        for (let i = 0; i < 60; i++) particles.push(new BgParticle());
+
+        function animateBg() {
+            bgCtx.clearRect(0, 0, bgCanvas.width, bgCanvas.height);
+            particles.forEach(p => { p.update(); p.draw(); });
+            requestAnimationFrame(animateBg);
+        }
+        animateBg();
+
+        const fwCanvas = document.getElementById('fireworks-canvas');
+        const fwCtx = fwCanvas.getContext('2d');
+        let fireworksActive = false;
+        
+        function resizeFw() {
+            fwCanvas.width = window.innerWidth;
+            fwCanvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeFw);
+        resizeFw();
+
+        // Отслеживание 4-го слайда
+        const slide4 = document.getElementById('slide-4');
+        const fwObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    if (!fireworksActive) {
+                        fireworksActive = true;
+                        fwCanvas.classList.add('active');
+                        startFireworks();
+                    }
+                } else {
+                    fireworksActive = false;
+                    fwCanvas.classList.remove('active');
+                }
+            });
+        }, { root: slider, threshold: 0.5 });
+        fwObserver.observe(slide4);
+
+        const fireworks = [];
+        const sparkParticles = [];
+        const colors = ['#FFD700', '#FFA500', '#FFFFFF', '#FDF5E6', '#DAA520']; // Золотые/светлые тона
+
+        class Firework {
+            constructor() {
+                this.x = Math.random() * (fwCanvas.width * 0.8) + (fwCanvas.width * 0.1);
+                this.y = fwCanvas.height;
+                this.targetY = Math.random() * (fwCanvas.height * 0.4) + (fwCanvas.height * 0.1);
+                this.speed = Math.random() * 3 + 4;
+                this.angle = Math.PI / 2 + (Math.random() - 0.5) * 0.4;
+                this.vx = Math.cos(this.angle) * this.speed;
+                this.vy = -Math.sin(this.angle) * this.speed;
+                this.exploded = false;
+                this.color = colors[Math.floor(Math.random() * colors.length)];
+                this.trail = [];
+            }
+            update() {
+                this.trail.push({x: this.x, y: this.y});
+                if (this.trail.length > 5) this.trail.shift();
+                
+                this.x += this.vx;
+                this.y += this.vy;
+                this.vy += 0.02; // Гравитация ракеты
+
+                if (this.vy >= 0 || this.y <= this.targetY) {
+                    this.exploded = true;
+                    this.explode();
+                }
+            }
+            draw() {
+                fwCtx.beginPath();
+                fwCtx.moveTo(this.trail[0].x, this.trail[0].y);
+                fwCtx.lineTo(this.x, this.y);
+                fwCtx.strokeStyle = this.color;
+                fwCtx.lineWidth = 2;
+                fwCtx.stroke();
+            }
+            explode() {
+                const numSparks = Math.random() * 40 + 60; 
+                for (let i = 0; i < numSparks; i++) {
+                    sparkParticles.push(new Spark(this.x, this.y, this.color));
+                }
+            }
+        }
+
+        class Spark {
+            constructor(x, y, color) {
+                this.x = x;
+                this.y = y;
+                this.color = color;
+                const angle = Math.random() * Math.PI * 2;
+                const speed = Math.random() * 4 + 1;
+                this.vx = Math.cos(angle) * speed;
+                this.vy = Math.sin(angle) * speed;
+                this.friction = 0.95;
+                this.gravity = 0.05;
+                this.alpha = 1;
+                this.decay = Math.random() * 0.015 + 0.01;
+                this.size = Math.random() * 2.5 + 0.5;
+            }
+            update() {
+                this.vx *= this.friction;
+                this.vy *= this.friction;
+                this.vy += this.gravity;
+                this.x += this.vx;
+                this.y += this.vy;
+                this.alpha -= this.decay;
+            }
+            draw() {
+                fwCtx.save();
+                fwCtx.globalAlpha = this.alpha;
+                fwCtx.fillStyle = this.color;
+                fwCtx.beginPath();
+                fwCtx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                fwCtx.fill();
+                fwCtx.restore();
+            }
+        }
+
+        let fwAnimationId;
+        
+        function startFireworks() {
+            function loop() {
+                if (!fireworksActive) {
+                    cancelAnimationFrame(fwAnimationId);
+                    fwCtx.clearRect(0, 0, fwCanvas.width, fwCanvas.height);
+                    fireworks.length = 0;
+                    sparkParticles.length = 0;
+                    return;
+                }
+
+                fwCtx.globalCompositeOperation = 'destination-out';
+                fwCtx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+                fwCtx.fillRect(0, 0, fwCanvas.width, fwCanvas.height);
+                fwCtx.globalCompositeOperation = 'lighter';
+
+                if (Math.random() < 0.04) fireworks.push(new Firework());
+
+                for (let i = fireworks.length - 1; i >= 0; i--) {
+                    fireworks[i].update();
+                    fireworks[i].draw();
+                    if (fireworks[i].exploded) fireworks.splice(i, 1);
+                }
+
+                for (let i = sparkParticles.length - 1; i >= 0; i--) {
+                    sparkParticles[i].update();
+                    sparkParticles[i].draw();
+                    if (sparkParticles[i].alpha <= 0) sparkParticles.splice(i, 1);
+                }
+
+                fwAnimationId = requestAnimationFrame(loop);
+            }
+            loop();
+        }
+    </script>
+</body>
+</html>
